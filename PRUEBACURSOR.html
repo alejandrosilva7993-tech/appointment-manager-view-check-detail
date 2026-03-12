@@ -36,6 +36,7 @@
     .filters-bar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 1rem;
       flex-shrink: 0;
+      min-width: 0;
     }
     .filter-buttons { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
     .filter-btn { padding: 0.5rem 1rem; min-height: 2.25rem; border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; background: white; color: #495057; font-size: 0.9rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -51,7 +52,7 @@
     .filter-dot-rejected { background: #b91c1c; }
     .filter-dot-completed { background: #7e22ce; }
     /* Indicador day unavailable: círculo + texto, fill surface-ground (#f9fafb), stroke outside (button/plain/color) */
-    .day-unavailable { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--text-color, #4b5563); }
+    .day-unavailable { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--text-color, #4b5563); flex-shrink: 0; white-space: nowrap; }
     .day-unavailable-dot { width: 8px; height: 8px; border-radius: 50%; background: #f9fafb !important; flex-shrink: 0; box-shadow: 0 0 0 2px #ced4da; }
     
     /* Toolbar: Create appointment a la izquierda; filtros + day unavailable a la derecha */
@@ -134,6 +135,14 @@
       }
       .fc .fc-toolbar-chunk:first-child { justify-content: center; }
       .fc .fc-toolbar-chunk:nth-child(2) { order: -1; justify-content: center; }
+    }
+    /* Responsive: day-unavailable siempre visible; filtros con scroll horizontal */
+    @media (max-width: 768px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar .toolbar-right { justify-content: flex-start; width: 100%; min-width: 0; flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .filters-bar { width: 100%; flex-wrap: wrap; gap: 0.75rem; }
+      .filters-bar .day-unavailable { flex-shrink: 0; }
+      .filters-bar .filter-buttons { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
     }
     /* Botones prev/next/today: mismo tamaño que filtros (padding 0.5rem 1rem, min-height) */
     .fc .fc-button {
