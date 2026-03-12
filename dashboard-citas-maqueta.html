@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Citas - Gestión de Transporte</title>
+  <!-- PrimeNG -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/primeng@17.18.0/resources/themes/lara-light-blue/theme.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/primeng@17.18.0/resources/primeng.min.css">
+  <!-- PrimeIcons (librería de iconos de PrimeNG) -->
+  <link href="https://unpkg.com/primeicons@7.0.0/primeicons.css" rel="stylesheet" crossorigin="anonymous">
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-family, system-ui, sans-serif); background: #f8fafc; min-height: 100vh; }
+    .app { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+    
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .header h1 { font-size: 1.5rem; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; }
+    .header h1 .pi { font-size: 1.25rem; }
+    /* Iconos PrimeIcons: mejor renderizado (evitar efecto "plasta") */
+    .pi { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-style: normal; font-variant: normal; font-weight: normal; font-size: 1rem; line-height: 1; display: inline-block; min-width: 1em; text-rendering: auto; }
+    
+    /* Leyenda de estados */
+    .status-legend { 
+      display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; 
+      padding: 0.5rem 1rem; background: white; border-radius: 8px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1.5rem;
+    }
+    .status-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: #475569; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-created { background: #3b82f6; }
+    .status-confirmed { background: #22c55e; }
+    .status-rejected { background: #ef4444; }
+    .status-completed { background: #94a3b8; }
+    .status-unavailable { background: #e2e8f0; }
+    
+    /* Controles de vista + Crear cita */
+    .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .toolbar .toolbar-left { order: 1; }
+    .toolbar .toolbar-right { order: 2; }
+    .btn { padding: 0.5rem 1rem; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn:hover { background: #f1f5f9; }
+    .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .btn-primary:hover { background: #2563eb; }
+    /* Button set: Día | Semana | Mes (estilo PrimeNG SelectButton) */
+    .button-set { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
+    .button-set .btn { border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; }
+    .button-set .btn:last-child { border-right: none; }
+    .button-set .btn.active { background: #3b82f6; color: white; }
+    .button-set .btn:not(.active) { background: white; color: #495057; }
+    .button-set .btn:not(.active):hover { background: #f8f9fa; }
+    .button-set .btn .pi { font-size: 0.95rem; }
+    
+    /* Calendario */
+    .calendar-container { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1rem; overflow-x: auto; }
+    #calendar { min-height: 500px; }
+    /* Día actual: blue-50 PrimeNG (#eff6ff) */
+    .fc .fc-day-today { background: #eff6ff !important; }
+    /* Botones prev/next/today: estilo discreto PrimeNG */
+    .fc .fc-toolbar-chunk { display: flex; align-items: center; gap: 0.5rem; }
+    .fc .fc-button { background: #fff !important; color: #495057 !important; border: 1px solid #ced4da !important; box-shadow: none !important; font-weight: 500; }
+    .fc .fc-button:hover { background: #f8f9fa !important; color: #495057 !important; border-color: #ced4da !important; }
+    .fc .fc-button:focus { box-shadow: none !important; }
+    .fc .fc-button-primary:not(:disabled):active { background: #e9ecef !important; }
+    .fc .fc-button .fc-icon { color: inherit; font-size: 1.1rem; }
+    /* prev+next como button set (unidos, estilo PrimeNG) */
+    .fc .fc-prev-button { border-radius: 6px 0 0 6px !important; margin-right: -1px !important; }
+    .fc .fc-next-button { border-radius: 0 6px 6px 0 !important; }
+    .fc .fc-today-button { border-radius: 6px !important; margin-left: 0.5rem !important; }
+    
+    /* FullCalendar overrides para colores por estado */
+    .fc-event.status-created { background: #3b82f6; border-color: #2563eb; }
+    .fc-event.status-confirmed { background: #22c55e; border-color: #16a34a; }
+    .fc-event.status-rejected { background: #ef4444; border-color: #dc2626; }
+    .fc-event.status-completed { background: #94a3b8; border-color: #64748b; }
+    
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 420px; width: 100%; overflow: hidden; }
+    .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-weight: 600; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header .btn-icon { padding: 0.35rem; min-width: auto; }
+    .modal-body { padding: 1.25rem; }
+    .modal-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .modal-row span:first-child { color: #64748b; }
+    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .modal-footer .btn { flex: 1; min-width: 100px; }
+    .status-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; }
+    .status-badge.created { background: #dbeafe; color: #1d4ed8; }
+    .status-badge.confirmed { background: #dcfce7; color: #166534; }
+    .status-badge.rejected { background: #fee2e2; color: #b91c1c; }
+    .status-badge.completed { background: #f1f5f9; color: #475569; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header">
+      <h1><i class="pi pi-calendar"></i> Gestión de Citas</h1>
+    </header>
+
+    <section class="status-legend">
+      <div class="status-item"><span class="status-dot status-created"></span> Creada</div>
+      <div class="status-item"><span class="status-dot status-confirmed"></span> Confirmada</div>
+      <div class="status-item"><span class="status-dot status-rejected"></span> Rechazada</div>
+      <div class="status-item"><span class="status-dot status-completed"></span> Completada</div>
+      <div class="status-item"><span class="status-dot status-unavailable"></span> Día no disponible</div>
+    </section>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="btn btn-primary" id="btnNuevaCita">
+          <i class="pi pi-plus"></i> Crear nueva cita
+        </button>
+      </div>
+      <div class="toolbar-right">
+        <div class="button-set view-buttons">
+          <button class="btn active" data-view="timeGridDay"><i class="pi pi-calendar"></i> Día</button>
+          <button class="btn" data-view="timeGridWeek"><i class="pi pi-list"></i> Semana</button>
+          <button class="btn" data-view="dayGridMonth"><i class="pi pi-th-large"></i> Mes</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="calendar-container">
+      <div id="calendar"></div>
+    </div>
+  </div>
+
+  <!-- Modal detalle cita -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span><i class="pi pi-file-edit"></i> Detalle de cita</span>
+        <button class="btn btn-icon" id="btnCloseModal" aria-label="Cerrar"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-row"><span>Número</span><span id="modalNumero">-</span></div>
+        <div class="modal-row"><span>Cliente</span><span id="modalCliente">-</span></div>
+        <div class="modal-row"><span>Inicio</span><span id="modalInicio">-</span></div>
+        <div class="modal-row"><span>Fin</span><span id="modalFin">-</span></div>
+        <div class="modal-row"><span>Estado</span><span id="modalEstado">-</span></div>
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <!-- Botones según estado se inyectan por JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/es.global.min.js"></script>
+  <script>
+    // Datos mock de citas con distintos estados
+    const citas = [
+      { id: '1', numero: 'CIT-001', cliente: 'Transportes ABC', tipo: 'Recogida', inicio: '2025-03-04T09:00:00', fin: '2025-03-04T10:00:00', estado: 'created' },
+      { id: '2', numero: 'CIT-002', cliente: 'Logística XYZ', tipo: 'Entrega', inicio: '2025-03-04T11:30:00', fin: '2025-03-04T12:30:00', estado: 'confirmed' },
+      { id: '3', numero: 'CIT-003', cliente: 'Carga Rápida SA', tipo: 'Recogida', inicio: '2025-03-04T14:00:00', fin: '2025-03-04T15:00:00', estado: 'rejected' },
+      { id: '4', numero: 'CIT-004', cliente: 'Envíos del Sur', tipo: 'Entrega', inicio: '2025-03-05T08:00:00', fin: '2025-03-05T09:00:00', estado: 'completed' },
+      { id: '5', numero: 'CIT-005', cliente: 'Fletes Norte', tipo: 'Recogida', inicio: '2025-03-05T10:00:00', fin: '2025-03-05T11:00:00', estado: 'created' },
+      { id: '6', numero: 'CIT-006', cliente: 'Distribuidora Central', tipo: 'Entrega', inicio: '2025-03-06T09:00:00', fin: '2025-03-06T10:30:00', estado: 'confirmed' },
+      { id: '7', numero: 'CIT-007', cliente: 'TransAndes', tipo: 'Recogida', inicio: '2025-03-03T16:00:00', fin: '2025-03-03T17:00:00', estado: 'confirmed' },
+    ];
+
+    const estadoLabels = { created: 'Creada', confirmed: 'Confirmada', rejected: 'Rechazada', completed: 'Completada' };
+
+    // Convertir citas a formato FullCalendar
+    const events = citas.map(c => ({
+      id: c.id,
+      title: `${c.tipo} - ${c.cliente}`,
+      start: c.inicio,
+      end: c.fin,
+      extendedProps: { ...c },
+      classNames: ['status-' + c.estado]
+    }));
+
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridDay',
+      locale: 'es',
+      headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+      slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      events: events,
+      eventClick: (info) => {
+        const c = info.event.extendedProps;
+        document.getElementById('modalNumero').textContent = c.numero;
+        document.getElementById('modalCliente').textContent = c.cliente;
+        document.getElementById('modalInicio').textContent = new Date(c.inicio).toLocaleString('es', { hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short' });
+        document.getElementById('modalFin').textContent = new Date(c.fin).toLocaleString('es', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const estadoEl = document.getElementById('modalEstado');
+        estadoEl.innerHTML = '<span class="status-badge ' + c.estado + '">' + estadoLabels[c.estado] + '</span>';
+
+        const footer = document.getElementById('modalFooter');
+        footer.innerHTML = '';
+        if (c.estado === 'created') {
+          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check"></i> Confirmar</button><button class="btn"><i class="pi pi-times"></i> Rechazar</button>';
+        } else if (c.estado === 'confirmed') {
+          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check-circle"></i> Finalizar</button><button class="btn"><i class="pi pi-calendar-plus"></i> Reprogramar</button>';
+        }
+        footer.querySelectorAll('.btn').forEach(b => b.addEventListener('click', () => closeModal()));
+
+        document.getElementById('modalOverlay').classList.remove('hidden');
+      }
+    });
+    calendar.render();
+
+    // Cambio de vista
+    document.querySelectorAll('.view-buttons .btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-buttons .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        calendar.changeView(btn.dataset.view);
+      });
+    });
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.add('hidden');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+
+    document.getElementById('btnNuevaCita').addEventListener('click', () => {
+      alert('Crear nueva cita (HU.02) - Placeholder para el prototipo');
+    });
+  </script>
+</body>
+</html>

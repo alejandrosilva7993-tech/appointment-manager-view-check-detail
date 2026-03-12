@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointment Management - Transport Portal</title>
+  <!-- PrimeVue (estilo similar a PrimeNG) -->
+  <link href="https://unpkg.com/primevue@3.53.0/resources/themes/lara-light-blue/theme.css" rel="stylesheet">
+  <!-- PrimeIcons (librería de iconos de PrimeNG) -->
+  <link href="https://unpkg.com/primeicons@7.0.0/primeicons.css" rel="stylesheet" crossorigin="anonymous">
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+  <style>
+    /* Variables FullCalendar: estilo PrimeNG default (botón secundario/outlined) */
+    :root {
+      --fc-button-text-color: var(--text-color, #4b5563);
+      --fc-button-bg-color: var(--surface-0, #ffffff);
+      --fc-button-border-color: var(--surface-300, #d1d5db);
+      --fc-button-hover-bg-color: var(--surface-100, #f3f4f6);
+      --fc-button-hover-border-color: var(--surface-300, #d1d5db);
+      --fc-button-active-bg-color: var(--surface-200, #e5e7eb);
+      --fc-button-active-border-color: var(--surface-300, #d1d5db);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100vh; margin: 0; overflow: hidden; font-family: var(--font-family, system-ui, sans-serif); background: #f8fafc; }
+    .app { display: flex; flex-direction: column; height: 100vh; max-width: 1400px; margin: 0 auto; padding: 1.5rem; overflow: hidden; }
+    
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; flex-shrink: 0; }
+    .header h1 { font-size: 1.5rem; color: var(--text-color, #4b5563); display: flex; align-items: center; gap: 0.5rem; }
+    .header h1 .pi { font-size: 1.25rem; }
+    /* Iconos PrimeIcons: mejor renderizado (evitar efecto "plasta") */
+    .pi { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-style: normal; font-variant: normal; font-weight: normal; font-size: 1rem; line-height: 1; display: inline-block; min-width: 1em; text-rendering: auto; }
+    
+    /* Filtros + day unavailable: arriba del calendario, lado derecho */
+    .filters-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 1rem;
+      flex-shrink: 0;
+    }
+    .filter-buttons { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
+    .filter-btn { padding: 0.5rem 1rem; min-height: 2.25rem; border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; background: white; color: #495057; font-size: 0.9rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .filter-btn:last-child { border-right: none; }
+    .filter-btn:hover { background: #f8f9fa; }
+    .filter-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .filter-btn.active[data-filter="all"], .filter-btn.active[data-filter="created"], .filter-btn.active[data-filter="confirmed"], .filter-btn.active[data-filter="rejected"], .filter-btn.active[data-filter="completed"] { background: #3b82f6; color: white; }
+    .filter-btn.active:hover { background: #3b82f6; }
+    /* Círculo de color: visible en todos los estados; stroke outside surface/0 */
+    .filter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px var(--surface-0, #ffffff); }
+    .filter-dot-created { background: #334155; }
+    .filter-dot-confirmed { background: #15803d; }
+    .filter-dot-rejected { background: #b91c1c; }
+    .filter-dot-completed { background: #7e22ce; }
+    /* Indicador day unavailable: círculo + texto, fill surface-ground (#f9fafb), stroke outside (button/plain/color) */
+    .day-unavailable { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--text-color, #4b5563); }
+    .day-unavailable-dot { width: 8px; height: 8px; border-radius: 50%; background: #f9fafb !important; flex-shrink: 0; box-shadow: 0 0 0 2px #ced4da; }
+    
+    /* Toolbar: Create appointment a la izquierda; filtros + day unavailable a la derecha */
+    .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; flex-shrink: 0; }
+    .toolbar .toolbar-left { order: 1; }
+    .toolbar .toolbar-right { order: 2; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .btn { padding: 0.5rem 1rem; min-height: 2.25rem; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn:hover { background: #f1f5f9; }
+    .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .btn-primary:hover { background: #2563eb; }
+    /* Button set: Día | Semana | Mes (estilo PrimeNG SelectButton) */
+    .button-set { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
+    .button-set .btn { border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; }
+    .button-set .btn:last-child { border-right: none; }
+    .button-set .btn.active { background: #3b82f6; color: white; }
+    .button-set .btn.active:hover { background: #3b82f6; }
+    .button-set .btn:not(.active) { background: white; color: #495057; }
+    .button-set .btn:not(.active):hover { background: #f8f9fa; }
+    .button-set .btn .pi { font-size: 0.95rem; }
+    
+    /* Calendario */
+    .calendar-container { flex: 1; min-height: 0; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1rem; overflow: hidden; }
+    #calendar { flex: 1; min-height: 0; overflow: hidden; border-radius: 8px; position: relative; }
+    #calendar::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      border: 1px solid var(--fc-border-color, #e2e8f0);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .fc .fc-scrollgrid { border-radius: 8px; overflow: hidden; }
+    /* Día actual: blue-50 PrimeNG (#eff6ff) */
+    .fc .fc-day-today { background: #eff6ff !important; }
+    /* Toolbar: centrar título entre left y right, evitar empalme en responsive */
+    .fc .fc-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .fc .fc-toolbar-chunk {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .fc .fc-toolbar-chunk:first-child {
+      flex: 0 0 auto;
+      justify-content: flex-start;
+    }
+    .fc .fc-toolbar-chunk:nth-child(2) {
+      flex: 1 1 0;
+      min-width: 0;
+      justify-content: center;
+    }
+    .fc .fc-toolbar-chunk:last-child {
+      flex: 0 0 auto;
+      justify-content: flex-end;
+    }
+    /* Título del calendario: textColor, tamaño más grande (1.25rem) */
+    #calendar .fc-toolbar-title,
+    .fc .fc-toolbar-title,
+    .fc h2.fc-toolbar-title {
+      font-size: 1.25rem !important;
+      font-weight: 600 !important;
+      color: var(--text-color, #4b5563) !important;
+    }
+    /* Responsive: evitar empalme título-botones en pantallas pequeñas */
+    @media (max-width: 576px) {
+      .fc .fc-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+      .fc .fc-toolbar-chunk:first-child { justify-content: center; }
+      .fc .fc-toolbar-chunk:nth-child(2) { order: -1; justify-content: center; }
+    }
+    /* Botones prev/next/today: mismo tamaño que filtros (padding 0.5rem 1rem, min-height) */
+    .fc .fc-button {
+      background: var(--surface-0, #ffffff) !important;
+      color: #495057 !important;
+      border: 1px solid #ced4da !important;
+      box-shadow: none !important;
+      font-weight: 500;
+      padding: 0.5rem 1rem !important;
+      min-height: 2.25rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .fc .fc-button:hover { background: #f8f9fa !important; color: #495057 !important; border-color: #ced4da !important; }
+    .fc .fc-button:focus { box-shadow: none !important; }
+    .fc .fc-button-primary:not(:disabled):active { background: var(--surface-200, #e5e7eb) !important; }
+    .fc .fc-button .fc-icon { color: inherit; font-size: 1.1rem; }
+    /* Today: stroke completo; wrapper evita clipping; overflow visible en padres */
+    .today-btn-wrapper { display: inline-block !important; padding: 1px !important; overflow: visible !important; margin-right: 0.75rem !important; }
+    .fc .fc-header-toolbar,
+    .fc .fc-toolbar,
+    .fc .fc-toolbar-chunk,
+    .fc .fc-toolbar-chunk:first-child .fc-button-group { overflow: visible !important; }
+    .fc .fc-hoy-button {
+      border: 1px solid #ced4da !important;
+      box-shadow: none !important;
+      border-radius: 6px !important;
+      margin-right: 0 !important;
+      font-weight: 400 !important;
+      font-size: 0.9rem !important;
+      min-width: 5rem !important;
+      position: relative !important;
+      z-index: 1 !important;
+      isolation: isolate !important;
+      contain: none !important;
+    }
+    .fc .fc-prev-button,
+    .fc .fc-next-button {
+      min-width: 2.5rem !important;
+      padding: 0.5rem 0.75rem !important;
+    }
+    .fc .fc-prev-button {
+      border-radius: 6px 0 0 6px !important;
+      border-right: none !important;
+      box-shadow: 1px 0 0 0 #ced4da !important;
+    }
+    .fc .fc-prev-button:hover {
+      box-shadow: 1px 0 0 0 #ced4da !important;
+    }
+    .fc .fc-next-button {
+      border-radius: 0 6px 6px 0 !important;
+    }
+    /* Day/Week/Month: inyectados como button-set con iconos (pi-list, pi-calendar, pi-th-large) */
+    
+    /* Padding en todos los lados para horarios del timeGrid */
+    .fc .fc-timegrid-slot-label {
+      padding: 0.5rem !important;
+    }
+    /* Primer horario: más padding derecho para no empalmar con divider de all-day */
+    .fc .fc-timegrid-slots .fc-timegrid-slot:first-child .fc-timegrid-slot-label,
+    .fc .fc-timegrid-axis:first-of-type .fc-timegrid-slot-label {
+      padding-right: 1rem !important;
+    }
+    /* Slot all-day: padding uniforme */
+    .fc .fc-all-day-slot .fc-timegrid-slot-label,
+    .fc .fc-timegrid-axis-frame {
+      padding: 0.5rem !important;
+    }
+    /* Líneas divisorias de horarios visibles (punteadas) */
+    .fc .fc-timegrid-slot { border-top: 1px dotted #cbd5e1 !important; }
+    .fc .fc-timegrid-slot-minor { border-top: 1px dotted #e2e8f0 !important; }
+    /* Sin margin en harness: FullCalendar usa left/width en %; margin fijo rompe el layout de columnas.
+       Usar padding para separación visual entre citas sin afectar el cálculo de ancho. */
+    .fc .fc-timegrid-event-harness { padding: 0 2px; overflow: hidden !important; min-width: 0 !important; }
+    /* Workaround Issue #6512: fc-timegrid-event-harness-inset aplicado a todos los eventos puede forzar estilos de solapamiento */
+    .fc-timegrid-event-harness-inset .fc-timegrid-event { box-shadow: none !important; }
+
+    /* Slot labels 12 AM/PM: iconos moon/sun alineados a la derecha con padding */
+    .fc .fc-timegrid-slot-label .slot-label-with-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.2rem;
+      padding-right: 0.5rem;
+    }
+    .fc .fc-timegrid-slot-label .slot-label-with-icon .pi {
+      font-size: 0.9rem;
+      color: var(--text-color-secondary, #6b7280);
+    }
+
+    /* Encabezados y horarios: fill blanco (mismo que días normales) */
+    .fc .fc-col-header,
+    .fc .fc-timegrid-slot-label {
+      background: #ffffff !important;
+    }
+    .fc .fc-col-header-cell,
+    .fc .fc-timegrid-slot-label {
+      color: var(--text-color, #4b5563);
+    }
+    /* Día de la semana (Tuesday, etc.): estilo anterior sin bold */
+    .fc .fc-col-header-cell-cushion {
+      font-size: 0.875rem !important;
+      font-weight: 400 !important;
+      color: var(--text-color, #4b5563) !important;
+    }
+    /* Slot labels y day numbers: mismo estilo y tamaño que las horas */
+    .fc .fc-timegrid-slot-label,
+    .fc .fc-timegrid-axis-cushion,
+    .fc .fc-daygrid-day-number {
+      font-size: 0.875rem !important;
+      font-weight: 400 !important;
+      color: var(--text-color, #4b5563) !important;
+    }
+
+    /* Domingos: Day unavailable - fill surface-ground (#f9fafb, color de encabezados) solo en celdas de día */
+    .day-unavailable-cell,
+    .fc .fc-day-sun:not(.fc-col-header-cell),
+    .fc-day-sun:not(.fc-col-header-cell),
+    .fc-scrollgrid .fc-day-sun:not(.fc-col-header-cell),
+    .fc-timegrid-col.fc-day-sun,
+    td.fc-day-sun,
+    .fc-daygrid-day.fc-day-sun {
+      background: #f9fafb !important;
+    }
+    /* Citas: border-radius 2-4px estilo técnico */
+    .fc .fc-event,
+    .fc .fc-event-main,
+    .fc .fc-daygrid-event,
+    .fc .fc-timegrid-event { border-radius: 4px !important; }
+
+    /* Encogimiento: evitar que citas se encimen; contenido debe caber en el ancho asignado */
+    .fc .fc-timegrid-event, .fc-event, .fc-event .fc-event-main, .fc-event-minimal, .fc-event-minimal .fc-event-title { min-width: 0 !important; overflow: hidden !important; }
+    .fc .fc-timegrid-event { width: 100% !important; max-width: 100% !important; }
+    .fc-event-minimal .fc-event-time { min-width: 0; flex-shrink: 1; }
+
+    /* Diseño citas: fondos sólidos WCAG AA, padding generoso entre barra y texto */
+    .fc-event { border: none !important; color: #1e293b !important; transition: background-color 0.15s ease; }
+    .fc-event.status-created { background: #e2e8f0 !important; }
+    .fc-event.status-created:hover { background: #cbd5e1 !important; }
+    .fc-event.status-confirmed { background: #dcfce7 !important; }
+    .fc-event.status-confirmed:hover { background: #bbf7d0 !important; }
+    .fc-event.status-rejected { background: #fee2e2 !important; }
+    .fc-event.status-rejected:hover { background: #fecaca !important; }
+    .fc-event.status-completed { background: #f3e8ff !important; }
+    .fc-event.status-completed:hover { background: #e9d5ff !important; }
+    .fc-event .fc-event-main { background: transparent !important; border: none !important; }
+    .fc-event-minimal { display: flex; align-items: center; gap: 10px; min-height: 100%; overflow: hidden; padding: 6px 12px; }
+    .fc-event-status-bar { width: 5px; min-width: 5px; flex-shrink: 0; align-self: stretch; margin-left: 0; }
+    .fc-event-status-bar.status-created { background: #334155 !important; }
+    .fc-event-status-bar.status-confirmed { background: #15803d !important; }
+    .fc-event-status-bar.status-rejected { background: #b91c1c !important; }
+    .fc-event-status-bar.status-completed { background: #7e22ce !important; }
+    .fc-event-minimal .fc-event-time { font-size: 0.8rem; line-height: 1.3; margin-right: 0; color: #475569; white-space: nowrap; }
+    .fc-event-minimal .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; line-height: 1.3; font-weight: 500; color: #1e293b !important; }
+    /* container-type removido del harness: puede afectar el cálculo de left/width en % con position absolute.
+       Fallback: estilos más compactos para slots estrechos vía media query (viewport) como aproximación. */
+    @media (max-width: 768px) {
+      .fc-event-minimal { gap: 6px !important; padding: 4px 8px !important; }
+      .fc-event-minimal .fc-event-time { font-size: 0.75rem !important; }
+    }
+
+    /* Vista month: mismo diseño */
+    .fc-daygrid-event { border-radius: 4px !important; padding: 6px 12px; min-height: 1.5em; }
+    .fc-daygrid-event-harness { border-radius: 4px !important; }
+    .fc-daygrid-event .fc-event-main { border-radius: 0 !important; }
+    .fc-daygrid-dot-event { border-radius: 0 !important; }
+    .fc-daygrid-event-dot { border-radius: 0 !important; }
+    
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 420px; width: 100%; overflow: hidden; }
+    .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-weight: 600; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-color, #4b5563); }
+    .modal-header .btn-icon { padding: 0.35rem; min-width: auto; }
+    .modal-body { padding: 1.25rem; }
+    .modal-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; color: var(--text-color, #4b5563); }
+    .modal-row span:first-child { color: var(--text-color-secondary, #6b7280); }
+    .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .modal-footer .btn { flex: 1; min-width: 100px; }
+    .status-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; }
+    .status-badge.created { background: #e2e8f0; color: #334155; }
+    .status-badge.confirmed { background: #dcfce7; color: #15803d; }
+    .status-badge.rejected { background: #fee2e2; color: #b91c1c; }
+    .status-badge.completed { background: #f3e8ff; color: #7e22ce; }
+    /* Toast (PrimeNG severity info: message/info/color, background, border) */
+    .toast { position: fixed; top: 1rem; right: 1rem; padding: 1rem 1.25rem; background: #e8e7fb; color: #6a5acd; border: solid #6a5acd; border-width: 0 0 0 6px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 0.9rem; z-index: 1100; animation: toastFade 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
+    .toast .toast-icon { color: #6a5acd; font-size: 1.25rem; }
+    .toast.hidden { display: none; }
+    @keyframes toastFade { from { opacity: 0; transform: translateX(1rem); } to { opacity: 1; transform: translateX(0); } }
+  </style>
+</head>
+<body tabindex="0">
+  <div class="app" id="app">
+    <header class="header">
+      <h1><i class="pi pi-calendar"></i> Appointment Management</h1>
+    </header>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="btn btn-primary" id="btnNuevaCita">
+          <i class="pi pi-plus"></i> Create appointment
+        </button>
+      </div>
+      <div class="toolbar-right filters-bar">
+        <span class="day-unavailable"><span class="day-unavailable-dot"></span>Day unavailable</span>
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="created"><span class="filter-dot filter-dot-created"></span> Created</button>
+          <button class="filter-btn" data-filter="confirmed"><span class="filter-dot filter-dot-confirmed"></span> Confirmed</button>
+          <button class="filter-btn" data-filter="rejected"><span class="filter-dot filter-dot-rejected"></span> Rejected</button>
+          <button class="filter-btn" data-filter="completed"><span class="filter-dot filter-dot-completed"></span> Completed</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="calendar-container">
+      <div id="calendar"></div>
+    </div>
+  </div>
+
+  <!-- Toast: estado inicial sin citas -->
+  <div class="toast hidden" id="toast"><i class="pi pi-info-circle toast-icon"></i>No appointments are registered</div>
+
+  <!-- Modal detalle cita -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span><i class="pi pi-file-edit"></i> Appointment details</span>
+        <button class="btn btn-icon" id="btnCloseModal" aria-label="Close"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-row"><span>Number</span><span id="modalNumero">-</span></div>
+        <div class="modal-row"><span>Customer</span><span id="modalCliente">-</span></div>
+        <div class="modal-row"><span>Start</span><span id="modalInicio">-</span></div>
+        <div class="modal-row"><span>End</span><span id="modalFin">-</span></div>
+        <div class="modal-row"><span>Status</span><span id="modalEstado">-</span></div>
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <!-- Botones según estado se inyectan por JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/en.global.min.js"></script>
+  <script>
+    // Generar citas mock: día actual, 2 anteriores y 2 siguientes (5 días)
+    function generarCitas() {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const clientes = ['Transportes ABC', 'Logística XYZ', 'Carga Rápida SA', 'Envíos del Sur', 'Fletes Norte', 'Distribuidora Central', 'TransAndes', 'Almacenes del Este', 'Carga Express', 'Logística Global', 'Mensajería Plus', 'Almacén Central', 'Fletes Express', 'Distribución Sur'];
+      const tipos = ['Goods Entry', 'Goods Exit'];
+      const estados = ['created', 'confirmed', 'rejected', 'completed'];
+      const citas = [];
+      let id = 1;
+      // Slots ampliados: más citas por día (de 6:00 a 18:00). Sin 10:00-11:45 en día actual (se añaden empalmadas)
+      const slotsBase = [
+        ['06:00', '07:00'], ['06:30', '07:30'], ['07:00', '08:00'], ['07:30', '08:30'], ['08:00', '09:00'],
+        ['08:30', '09:30'], ['09:00', '10:00'], ['09:30', '10:30'], ['11:00', '12:00'], ['11:30', '12:30'],
+        ['12:00', '13:00'], ['12:30', '13:30'], ['13:00', '14:00'], ['14:00', '15:00'], ['14:30', '15:30'],
+        ['15:00', '16:00'], ['15:30', '16:30'], ['16:00', '17:00'], ['16:30', '17:30'], ['17:00', '18:00']
+      ];
+      for (let d = -2; d <= 2; d++) {
+        const slots = (d === 0) ? slotsBase : slotsBase.concat([['10:00', '11:00'], ['10:15', '11:15'], ['10:30', '11:30'], ['10:45', '11:45']]);
+        const fecha = new Date(hoy);
+        fecha.setDate(fecha.getDate() + d);
+        const Y = fecha.getFullYear();
+        const M = String(fecha.getMonth() + 1).padStart(2, '0');
+        const D = String(fecha.getDate()).padStart(2, '0');
+        const base = Y + '-' + M + '-' + D;
+        for (let i = 0; i < slots.length; i++) {
+          const [ini, fin] = slots[i];
+          const cliente = clientes[(id - 1) % clientes.length];
+          const tipo = tipos[(id - 1) % tipos.length];
+          const estado = estados[(id - 1) % estados.length];
+          citas.push({
+            id: String(id),
+            numero: 'CIT-' + String(id).padStart(3, '0'),
+            cliente: cliente,
+            tipo: tipo,
+            inicio: base + 'T' + ini + ':00',
+            fin: base + 'T' + fin + ':00',
+            estado: estado
+          });
+          id++;
+        }
+      }
+      // Escenario: 4 citas empalmadas en el día actual (10:00-11:15)
+      const baseHoy = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+      const empalmadas = [
+        { ini: '10:00', fin: '11:00', cliente: 'Cliente A', tipo: 'Goods Entry', estado: 'created' },
+        { ini: '10:15', fin: '11:15', cliente: 'Cliente B', tipo: 'Goods Exit', estado: 'confirmed' },
+        { ini: '10:30', fin: '11:30', cliente: 'Cliente C', tipo: 'Goods Entry', estado: 'confirmed' },
+        { ini: '10:45', fin: '11:45', cliente: 'Cliente D', tipo: 'Goods Exit', estado: 'created' }
+      ];
+      empalmadas.forEach(function(e) {
+        citas.push({
+          id: 'emp-' + id,
+          numero: 'CIT-' + String(id).padStart(3, '0'),
+          cliente: e.cliente,
+          tipo: e.tipo,
+          inicio: baseHoy + 'T' + e.ini + ':00',
+          fin: baseHoy + 'T' + e.fin + ':00',
+          estado: e.estado
+        });
+        id++;
+      });
+      return citas;
+    }
+    const citas = generarCitas();
+
+    const estadoLabels = { created: 'Created', confirmed: 'Confirmed', rejected: 'Rejected', completed: 'Completed' };
+
+    // Convertir citas a formato FullCalendar
+    const events = citas.map(c => ({
+      id: c.id,
+      title: `${c.tipo} - ${c.cliente}`,
+      start: c.inicio,
+      end: c.fin,
+      extendedProps: { ...c },
+      classNames: ['status-' + c.estado]
+    }));
+
+    let mostrarCitas = false;
+    const eventsData = events.slice();
+
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridDay',
+      height: '100%',
+      locale: 'en',
+      customButtons: {
+        hoy: {
+          text: 'Today',
+          click: function() { calendar.today(); }
+        }
+      },
+      headerToolbar: { left: 'hoy,prev,next', center: 'title', right: '' },
+      slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      slotLabelContent: function(arg) {
+        const d = arg.date;
+        const is12am = d.getHours() === 0 && d.getMinutes() === 0;
+        const is12pm = d.getHours() === 12 && d.getMinutes() === 0;
+        if (is12am) {
+          return { html: '<span class="slot-label-with-icon"><span>' + arg.text + '</span><i class="pi pi-moon"></i></span>' };
+        }
+        if (is12pm) {
+          return { html: '<span class="slot-label-with-icon"><span>' + arg.text + '</span><i class="pi pi-sun"></i></span>' };
+        }
+        return arg.text;
+      },
+      eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      eventDisplay: 'block',
+      displayEventTime: true,
+      displayEventEnd: true,
+      slotEventOverlap: false,
+      /* Espacio compartido: citas lado a lado en Día/Semana. dayGridMonth no soporta slotEventOverlap. */
+      views: {
+        timeGridDay: { slotEventOverlap: false },
+        timeGridWeek: { slotEventOverlap: false }
+      },
+      eventMaxStack: 99,
+      eventOrder: 'start',
+      eventOrderStrict: true,
+      slotDuration: '00:15:00',
+      events: [],
+      dayMaxEvents: 5,
+      moreLinkClick: 'week',
+      moreLinkContent: function(arg) { return '+ ' + arg.num + ' appointments'; },
+      dayCellClassNames: function(arg) {
+        if (arg.date.getDay() === 0) return ['day-unavailable-cell'];
+        return [];
+      },
+      dayCellDidMount: function(arg) {
+        if (arg.date.getDay() === 0) {
+          arg.el.style.setProperty('background', '#f9fafb', 'important');
+          arg.el.classList.add('day-unavailable-cell');
+          var col = arg.el.closest('.fc-timegrid-col');
+          if (col) {
+            col.style.setProperty('background', '#f9fafb', 'important');
+            col.classList.add('day-unavailable-cell');
+          }
+        }
+      },
+      eventContent: function(arg) {
+        const estado = arg.event.extendedProps.estado || 'created';
+        const timeText = (arg.timeText || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const title = (arg.event.title || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return {
+          html: '<div class="fc-event-minimal"><span class="fc-event-status-bar status-' + estado + '"></span><span class="fc-event-time">' + timeText + '</span><span class="fc-event-title">' + title + '</span></div>'
+        };
+      },
+      eventClick: (info) => {
+        const c = info.event.extendedProps;
+        document.getElementById('modalNumero').textContent = c.numero;
+        document.getElementById('modalCliente').textContent = c.cliente;
+        document.getElementById('modalInicio').textContent = new Date(c.inicio).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short' });
+        document.getElementById('modalFin').textContent = new Date(c.fin).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const estadoEl = document.getElementById('modalEstado');
+        estadoEl.innerHTML = '<span class="status-badge ' + c.estado + '">' + estadoLabels[c.estado] + '</span>';
+
+        const footer = document.getElementById('modalFooter');
+        footer.innerHTML = '';
+        if (c.estado === 'created') {
+          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check"></i> Confirm</button><button class="btn"><i class="pi pi-times"></i> Reject</button>';
+        } else if (c.estado === 'confirmed') {
+          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check-circle"></i> Complete</button><button class="btn"><i class="pi pi-calendar-plus"></i> Reschedule</button>';
+        }
+        footer.querySelectorAll('.btn').forEach(b => b.addEventListener('click', () => closeModal()));
+
+        document.getElementById('modalOverlay').classList.remove('hidden');
+      }
+    });
+
+    /* Escenario 2: cargar citas solo con tecla Enter o flecha derecha (principio fijo) */
+    function cargarEscenario2() {
+      if (mostrarCitas) return;
+      mostrarCitas = true;
+      events.forEach(function(ev) { calendar.addEvent(ev); });
+      calendar.gotoDate(new Date());
+      document.getElementById('toast').classList.add('hidden');
+    }
+
+    window.addEventListener('keydown', function(e) {
+      if (mostrarCitas) return;
+      var tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].indexOf(tag) >= 0) return;
+      if (e.key === 'ArrowRight' || e.key === 'Enter' || e.keyCode === 39 || e.keyCode === 13) {
+        e.preventDefault();
+        e.stopPropagation();
+        cargarEscenario2();
+      }
+    }, true);
+
+    calendar.render();
+
+    setTimeout(function() { document.body.focus(); }, 100);
+
+    // Today: stroke completo; tamaños unificados para Today/Prev/Next
+    function applyTodayButtonStyle() {
+      var hoyBtn = document.querySelector('.fc-hoy-button');
+      if (hoyBtn) {
+        if (!hoyBtn.closest('.today-btn-wrapper')) {
+          var wrapper = document.createElement('span');
+          wrapper.className = 'today-btn-wrapper';
+          hoyBtn.parentNode.insertBefore(wrapper, hoyBtn);
+          wrapper.appendChild(hoyBtn);
+        }
+        hoyBtn.style.setProperty('border', '1px solid #ced4da', 'important');
+        hoyBtn.style.setProperty('box-shadow', 'none', 'important');
+        hoyBtn.style.setProperty('border-radius', '6px', 'important');
+        hoyBtn.style.setProperty('margin-right', '0', 'important');
+        hoyBtn.style.setProperty('padding', '0.5rem 1rem', 'important');
+        hoyBtn.style.setProperty('min-height', '2.25rem', 'important');
+        hoyBtn.style.setProperty('min-width', '5rem', 'important');
+      }
+      var prevBtn = document.querySelector('.fc-prev-button');
+      if (prevBtn) {
+        prevBtn.style.setProperty('padding', '0.5rem 1rem', 'important');
+        prevBtn.style.setProperty('min-height', '2.25rem', 'important');
+        prevBtn.style.setProperty('min-width', '2.5rem', 'important');
+      }
+      var nextBtn = document.querySelector('.fc-next-button');
+      if (nextBtn) {
+        nextBtn.style.setProperty('padding', '0.5rem 1rem', 'important');
+        nextBtn.style.setProperty('min-height', '2.25rem', 'important');
+        nextBtn.style.setProperty('min-width', '2.5rem', 'important');
+      }
+    }
+    applyTodayButtonStyle();
+    setTimeout(applyTodayButtonStyle, 150);
+    setTimeout(applyTodayButtonStyle, 300);
+
+    function applyDayUnavailableStyles() {
+      setTimeout(function() {
+        var selector = '.fc-timegrid-col.fc-day-sun, .day-unavailable-cell, td.fc-day-sun, .fc-daygrid-day.fc-day-sun';
+        document.querySelectorAll(selector).forEach(function(el) {
+          if (!el.classList.contains('fc-col-header-cell')) {
+            el.style.setProperty('background', '#f9fafb', 'important');
+          }
+        });
+      }, 50);
+    }
+    applyDayUnavailableStyles();
+
+    // Inyectar botones Day/Week/Month con iconos y estilo button-set (FC no los renderiza; right: '')
+    (function injectViewButtons() {
+      const rightChunk = document.querySelector('#calendar .fc-toolbar .fc-toolbar-chunk:last-child');
+      if (!rightChunk) return;
+      rightChunk.innerHTML = '<div class="button-set view-buttons"><button class="btn active" data-view="timeGridDay"><i class="pi pi-list"></i> Day</button><button class="btn" data-view="timeGridWeek"><i class="pi pi-calendar"></i> Week</button><button class="btn" data-view="dayGridMonth"><i class="pi pi-th-large"></i> Month</button></div>';
+      rightChunk.querySelectorAll('.view-buttons .btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          rightChunk.querySelectorAll('.view-buttons .btn').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          calendar.changeView(btn.dataset.view);
+        });
+      });
+      calendar.on('datesSet', function() {
+        rightChunk.querySelectorAll('.view-buttons .btn').forEach(function(b) {
+          b.classList.toggle('active', b.dataset.view === calendar.view.type);
+        });
+        applyTodayButtonStyle();
+        applyDayUnavailableStyles();
+      });
+    })();
+
+    // Filtros: aplicar eventos según selección; deshabilitar si no hay registros
+    let selectedFilter = 'all';
+    function getFilteredEvents() {
+      if (selectedFilter === 'all') return events;
+      return events.filter(e => e.extendedProps.estado === selectedFilter);
+    }
+    function getCountByStatus() {
+      const counts = { all: events.length, created: 0, confirmed: 0, rejected: 0, completed: 0 };
+      events.forEach(e => { counts[e.extendedProps.estado] = (counts[e.extendedProps.estado] || 0) + 1; });
+      return counts;
+    }
+    function updateFilterDisabledState() {
+      const counts = getCountByStatus();
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const filter = btn.dataset.filter;
+        if (filter === 'all') return;
+        const count = counts[filter] || 0;
+        btn.disabled = count === 0;
+        if (btn.disabled && btn.classList.contains('active')) {
+          btn.classList.remove('active');
+          const allBtn = document.querySelector('.filter-btn[data-filter="all"]');
+          if (allBtn) { allBtn.classList.add('active'); allBtn.disabled = false; }
+          selectedFilter = 'all';
+          applyFilter();
+        }
+      });
+    }
+    function applyFilter() {
+      calendar.removeAllEvents();
+      getFilteredEvents().forEach(ev => calendar.addEvent(ev));
+    }
+    updateFilterDisabledState();
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFilter = btn.dataset.filter;
+        applyFilter();
+      });
+    });
+
+    // Toast: mostrar en estado inicial (Paso 1); ocultar tras 5 segundos o al pasar a Paso 2
+    (function() {
+      const toast = document.getElementById('toast');
+      if (!mostrarCitas) {
+        toast.classList.remove('hidden');
+        setTimeout(function() { toast.classList.add('hidden'); }, 5000);
+      } else {
+        toast.classList.add('hidden');
+      }
+    })();
+
+    /* Inyectar estilos DESPUÉS de FullCalendar (FC v6 inyecta CSS por JS) */
+    (function injectFcHeaderStyles() {
+      const css = `
+        .fc .fc-toolbar-title,
+        .fc h2.fc-toolbar-title {
+          font-size: 1.25rem !important;
+          font-weight: 600 !important;
+          color: var(--text-color, #4b5563) !important;
+        }
+        .fc .fc-col-header-cell-cushion {
+          font-size: 0.875rem !important;
+          font-weight: 400 !important;
+          color: var(--text-color, #4b5563) !important;
+        }
+        .fc .fc-timegrid-slot-label,
+        .fc .fc-timegrid-axis-cushion,
+        .fc .fc-daygrid-day-number {
+          font-size: 0.875rem !important;
+          font-weight: 400 !important;
+          color: var(--text-color, #4b5563) !important;
+        }
+        /* Today: overflow visible; wrapper con padding */
+        .today-btn-wrapper { padding: 1px !important; overflow: visible !important; }
+        .fc .fc-header-toolbar, .fc .fc-toolbar, .fc .fc-toolbar-chunk, .fc .fc-toolbar-chunk .fc-button-group { overflow: visible !important; }
+        .fc .fc-hoy-button { border: 1px solid #ced4da !important; box-shadow: none !important; border-radius: 6px !important; padding: 0.5rem 1rem !important; min-height: 2.25rem !important; min-width: 5rem !important; }
+        .fc .fc-prev-button, .fc .fc-next-button { padding: 0.5rem 1rem !important; min-height: 2.25rem !important; min-width: 2.5rem !important; }
+        /* Días no disponibles: fill surface-ground (#f9fafb) */
+        .day-unavailable-cell, .fc .fc-day-sun:not(.fc-col-header-cell), .fc-timegrid-col.fc-day-sun, td.fc-day-sun, .fc-daygrid-day.fc-day-sun {
+          background: #f9fafb !important;
+        }
+        /* Encabezados y horarios: fill blanco (días normales) */
+        .fc .fc-col-header, .fc .fc-timegrid-slot-label {
+          background: #ffffff !important;
+        }
+        /* Eventos: border-radius 4px estilo técnico */
+        .fc .fc-event, .fc .fc-event-main, .fc .fc-daygrid-event, .fc .fc-timegrid-event, .fc-daygrid-event-harness { border-radius: 4px !important; }
+        /* Vista month: padding compacto */
+        .fc .fc-daygrid-event { padding: 1px 4px !important; }
+        /* Líneas divisorias punteadas visibles */
+        .fc .fc-timegrid-slot { border-top: 1px dotted #cbd5e1 !important; }
+        .fc .fc-timegrid-slot-minor { border-top: 1px dotted #e2e8f0 !important; }
+      `;
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    })();
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.add('hidden');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+
+    document.getElementById('btnNuevaCita').addEventListener('click', () => {
+      alert('Crear nueva cita (HU.02) - Placeholder para el prototipo');
+    });
+  </script>
+</body>
+</html>
