@@ -711,7 +711,7 @@
         const footer = document.getElementById('modalFooter');
         footer.innerHTML = '';
         if (c.estado === 'created') {
-          footer.innerHTML = '<button class="btn btn-danger">Reject</button><button class="btn btn-success">Confirm</button>';
+          footer.innerHTML = '<button class="btn">Reject</button><button class="btn btn-primary">Confirm</button>';
           footer.classList.remove('modal-footer--no-actions');
         } else if (c.estado === 'confirmed') {
           footer.innerHTML = '<button class="btn">Reschedule</button><button class="btn btn-primary">Complete</button>';
