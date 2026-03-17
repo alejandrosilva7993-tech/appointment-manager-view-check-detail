@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Appointment Management - Transport Portal</title>
-  <!-- PrimeVue (estilo similar a PrimeNG) -->
-  <link href="https://unpkg.com/primevue@3.53.0/resources/themes/lara-light-blue/theme.css" rel="stylesheet">
+  <!-- PrimeNG -->
+  <link href="https://unpkg.com/primeng@17.18.0/resources/themes/lara-light-blue/theme.css" rel="stylesheet">
   <!-- PrimeIcons (librería de iconos de PrimeNG) -->
   <link href="https://unpkg.com/primeicons@7.0.0/primeicons.css" rel="stylesheet" crossorigin="anonymous">
   <!-- FullCalendar -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
   <style>
-    /* Variables FullCalendar: estilo PrimeNG default (botón secundario/outlined) */
+    /* Variables FullCalendar y surface-300 para resaltado (PrimeNG lara-light-blue) */
     :root {
+      --surface-300: #d1d5db;
       --fc-button-text-color: var(--text-color, #4b5563);
       --fc-button-bg-color: var(--surface-0, #ffffff);
       --fc-button-border-color: var(--surface-300, #d1d5db);
@@ -37,8 +38,10 @@
       display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 1rem;
       flex-shrink: 0;
       min-width: 0;
+      width: fit-content;
     }
-    .filter-buttons { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
+    .filter-buttons-scroll { display: contents; }
+    .filter-buttons { display: inline-flex; flex: 0 0 auto; width: max-content; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
     .filter-btn { padding: 0.5rem 1rem; min-height: 2.25rem; border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; background: white; color: #495057; font-size: 0.9rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
     .filter-btn:last-child { border-right: none; }
     .filter-btn:hover { background: #f8f9fa; }
@@ -58,11 +61,15 @@
     /* Toolbar: Create appointment a la izquierda; filtros + day unavailable a la derecha */
     .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; flex-shrink: 0; }
     .toolbar .toolbar-left { order: 1; }
-    .toolbar .toolbar-right { order: 2; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .toolbar .toolbar-right { order: 2; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; flex: 0 0 auto; width: fit-content; }
     .btn { padding: 0.5rem 1rem; min-height: 2.25rem; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
     .btn:hover { background: #f1f5f9; }
     .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
     .btn-primary:hover { background: #2563eb; }
+    .btn-success { background: #1da750; color: white; border-color: #1da750; }
+    .btn-success:hover { background: #188a42; }
+    .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
     /* Button set: Día | Semana | Mes (estilo PrimeNG SelectButton) */
     .button-set { display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden; }
     .button-set .btn { border: none; border-radius: 0; border-right: 1px solid #ced4da; margin: 0; }
@@ -142,7 +149,8 @@
       .toolbar .toolbar-right { justify-content: flex-start; width: 100%; min-width: 0; flex-direction: column; align-items: stretch; gap: 0.75rem; }
       .filters-bar { width: 100%; flex-wrap: wrap; gap: 0.75rem; }
       .filters-bar .day-unavailable { flex-shrink: 0; }
-      .filters-bar .filter-buttons { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+      .filters-bar .filter-buttons-scroll { display: block; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+      .filters-bar .filter-buttons { flex: none; width: max-content; }
     }
     /* Botones prev/next/today: mismo tamaño que filtros (padding 0.5rem 1rem, min-height) */
     .fc .fc-button {
@@ -215,11 +223,21 @@
     /* Líneas divisorias de horarios visibles (punteadas) */
     .fc .fc-timegrid-slot { border-top: 1px dotted #cbd5e1 !important; }
     .fc .fc-timegrid-slot-minor { border-top: 1px dotted #e2e8f0 !important; }
+    /* Contenedor de eventos: position relative para que harnesses con position absolute se posicionen correctamente */
+    .fc .fc-timegrid-col, .fc .fc-timegrid-col-frame, .fc .fc-timegrid-events, .fc .fc-timegrid-col-events { position: relative !important; }
     /* Sin margin en harness: FullCalendar usa left/width en %; margin fijo rompe el layout de columnas.
        Usar padding para separación visual entre citas sin afectar el cálculo de ancho. */
-    .fc .fc-timegrid-event-harness { padding: 0 2px; overflow: hidden !important; min-width: 0 !important; }
+    .fc .fc-timegrid-event-harness { padding: 0; overflow: hidden !important; min-width: 0 !important; }
+    .fc .fc-timegrid-event-harness .fc-event-minimal { min-width: 60px; }
     /* Workaround Issue #6512: fc-timegrid-event-harness-inset aplicado a todos los eventos puede forzar estilos de solapamiento */
     .fc-timegrid-event-harness-inset .fc-timegrid-event { box-shadow: none !important; }
+    /* Forzar ancho completo cuando no hay solapamiento (n=1); persiste aunque FullCalendar re-aplique estilos */
+    .fc-timegrid-col-events .fc-timegrid-event-harness.fc-cita-full-width {
+      left: 0 !important;
+      right: auto !important;
+      width: 100% !important;
+      inset: unset !important;
+    }
 
     /* Slot labels 12 AM/PM: iconos moon/sun alineados a la derecha con padding */
     .fc .fc-timegrid-slot-label .slot-label-with-icon {
@@ -268,66 +286,169 @@
     .fc-daygrid-day.fc-day-sun {
       background: #f9fafb !important;
     }
-    /* Citas: border-radius 2-4px estilo técnico */
+    /* Citas: border-radius 6px estilo card */
     .fc .fc-event,
     .fc .fc-event-main,
     .fc .fc-daygrid-event,
-    .fc .fc-timegrid-event { border-radius: 4px !important; }
+    .fc .fc-timegrid-event { border-radius: 6px !important; }
 
     /* Encogimiento: evitar que citas se encimen; contenido debe caber en el ancho asignado */
     .fc .fc-timegrid-event, .fc-event, .fc-event .fc-event-main, .fc-event-minimal, .fc-event-minimal .fc-event-title { min-width: 0 !important; overflow: hidden !important; }
     .fc .fc-timegrid-event { width: 100% !important; max-width: 100% !important; }
     .fc-event-minimal .fc-event-time { min-width: 0; flex-shrink: 1; }
 
-    /* Diseño citas: fondos sólidos WCAG AA, padding generoso entre barra y texto */
-    .fc-event { border: none !important; color: #1e293b !important; transition: background-color 0.15s ease; }
-    .fc-event.status-created { background: #e2e8f0 !important; }
-    .fc-event.status-created:hover { background: #cbd5e1 !important; }
-    .fc-event.status-confirmed { background: #dcfce7 !important; }
-    .fc-event.status-confirmed:hover { background: #bbf7d0 !important; }
-    .fc-event.status-rejected { background: #fee2e2 !important; }
-    .fc-event.status-rejected:hover { background: #fecaca !important; }
-    .fc-event.status-completed { background: #f3e8ff !important; }
-    .fc-event.status-completed:hover { background: #e9d5ff !important; }
+    /* Diseño citas: card normal, contorno root-surface/border, pleca integrada al borde izquierdo (único diferenciador por estatus) */
+    .fc-event, .fc-daygrid-event {
+      background: rgba(255, 255, 255, 0.95) !important;
+      border: 1px solid var(--surface-border, var(--surface-300, #d1d5db)) !important;
+      border-left-width: 6px !important;
+      border-left-style: solid !important;
+      color: #1e293b !important;
+      transition: border-left-color 0.15s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .fc-event.status-created, .fc-daygrid-event.status-created { border-left-color: #334155 !important; }
+    .fc-event.status-confirmed, .fc-daygrid-event.status-confirmed { border-left-color: #15803d !important; }
+    .fc-event.status-rejected, .fc-daygrid-event.status-rejected { border-left-color: #b91c1c !important; }
+    .fc-event.status-completed, .fc-daygrid-event.status-completed { border-left-color: #7e22ce !important; }
+    .fc-event, .fc-daygrid-event { cursor: pointer !important; }
+    .fc-event:hover, .fc-daygrid-event:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18) !important;
+      background: rgba(255, 255, 255, 1) !important;
+      transform: translateY(-1px);
+    }
+    .fc-event.fc-event-hover, .fc-daygrid-event.fc-event-hover {
+      opacity: 1 !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18) !important;
+      transform: translateY(-1px);
+    }
     .fc-event .fc-event-main { background: transparent !important; border: none !important; }
-    .fc-event-minimal { display: flex; align-items: center; gap: 10px; min-height: 100%; overflow: hidden; padding: 6px 12px; }
-    .fc-event-status-bar { width: 5px; min-width: 5px; flex-shrink: 0; align-self: stretch; margin-left: 0; }
-    .fc-event-status-bar.status-created { background: #334155 !important; }
-    .fc-event-status-bar.status-confirmed { background: #15803d !important; }
-    .fc-event-status-bar.status-rejected { background: #b91c1c !important; }
-    .fc-event-status-bar.status-completed { background: #7e22ce !important; }
-    .fc-event-minimal .fc-event-time { font-size: 0.8rem; line-height: 1.3; margin-right: 0; color: #475569; white-space: nowrap; }
-    .fc-event-minimal .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; line-height: 1.3; font-weight: 500; color: #1e293b !important; }
-    /* container-type removido del harness: puede afectar el cálculo de left/width en % con position absolute.
-       Fallback: estilos más compactos para slots estrechos vía media query (viewport) como aproximación. */
+
+    /* Contenedor minimal: texto en varias líneas para espacios reducidos */
+    .fc-timegrid-event, .fc-daygrid-event { container-type: inline-size; container-name: event-slot; }
+    .fc-event-minimal {
+      display: flex;
+      align-items: stretch;
+      min-height: 100%;
+      overflow: hidden;
+      padding: 4px 8px;
+    }
+    .fc-event-text {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15em;
+    }
+    .fc-event-minimal .fc-event-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    /* Timegrid (día/semana): permitir wrap de texto cuando hay citas lado a lado */
+    .fc-timegrid-event .fc-event-minimal .fc-event-customer,
+    .fc-timegrid-event .fc-event-minimal .fc-event-tipo,
+    .fc-timegrid-event .fc-event-minimal .fc-event-time {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+    .fc-event-minimal .fc-event-customer { font-size: 0.85rem; font-weight: 500; color: #1e293b !important; }
+    .fc-event-minimal .fc-event-tipo { font-size: 0.8rem; color: #64748b; font-weight: 400 !important; display: inline-flex; align-items: center; gap: 0.25em; }
+    .fc-event-minimal .fc-event-tipo .pi { font-size: 0.9em; }
+    @container event-slot (max-width: 110px) {
+      .fc-event-tipo .pi { display: none !important; }
+    }
+    .fc-event-minimal .fc-event-time {
+      font-size: 0.75rem;
+      line-height: 1.3;
+      color: #64748b;
+      font-weight: 400 !important;
+    }
+    .fc-event-minimal .fc-event-title {
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      font-weight: 500;
+      color: #1e293b !important;
+      flex: 1 1 0;
+      min-width: 0;
+    }
     @media (max-width: 768px) {
-      .fc-event-minimal { gap: 6px !important; padding: 4px 8px !important; }
+      .fc-event-minimal { padding: 4px 8px !important; }
       .fc-event-minimal .fc-event-time { font-size: 0.75rem !important; }
     }
 
-    /* Vista month: mismo diseño */
-    .fc-daygrid-event { border-radius: 4px !important; padding: 6px 12px; min-height: 1.5em; }
-    .fc-daygrid-event-harness { border-radius: 4px !important; }
+    /* Vista month: horario + título visibles; maximizar espacio para ambos */
+    .fc-daygrid-event { border-radius: 6px !important; padding: 5px 8px !important; min-height: 2.4em; }
+    .fc-daygrid-event-harness { border-radius: 6px !important; }
     .fc-daygrid-event .fc-event-main { border-radius: 0 !important; }
+    .fc-daygrid-event .fc-event-customer { display: block !important; font-size: 0.8rem !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-weight: 500 !important; }
+    .fc-daygrid-event .fc-event-tipo { display: inline-flex !important; align-items: center; gap: 0.2em; font-size: 0.8rem !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-weight: 400 !important; }
+    .fc-daygrid-event .fc-event-tipo .pi { font-size: 0.9em; }
+    .fc-daygrid-event .fc-event-time { display: block !important; font-size: 0.75rem !important; color: #64748b !important; font-weight: 400 !important; }
+    .fc-daygrid-event .fc-event-title { display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; font-size: 0.9rem !important; line-height: 1.3 !important; }
     .fc-daygrid-dot-event { border-radius: 0 !important; }
     .fc-daygrid-event-dot { border-radius: 0 !important; }
     
-    /* Modal */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    /* Modal: centrado en eje x e y */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 10001; padding: 1rem; }
     .modal-overlay.hidden { display: none; }
-    .modal { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 420px; width: 100%; overflow: hidden; }
+    .modal { background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 540px; width: 100%; overflow: hidden; }
     .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-weight: 600; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-color, #4b5563); }
-    .modal-header .btn-icon { padding: 0.35rem; min-width: auto; }
+    .modal-header .modal-close-icon { background: none; border: none; padding: 0; margin: 0; cursor: pointer; color: var(--text-color-secondary, #6b7280); font-size: 1.25rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+    .modal-header .modal-close-icon:hover { color: var(--text-color, #4b5563); }
     .modal-body { padding: 1.25rem; }
+    .modal-section { font-weight: 600; font-size: 0.95rem; color: var(--text-color, #4b5563); padding: 0.75rem 0 0.35rem 0; margin-top: 0.5rem; border-bottom: 1px solid #e2e8f0; }
+    .modal-section:first-child { margin-top: 0; padding-top: 0; }
     .modal-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; color: var(--text-color, #4b5563); }
     .modal-row span:first-child { color: var(--text-color-secondary, #6b7280); }
+    .status-display { display: inline-flex; align-items: center; gap: 0.4rem; }
     .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .modal-footer .btn { flex: 1; min-width: 100px; }
+    .modal-footer.modal-footer--no-actions { display: none; }
+    .modal-footer .btn { flex: 1; min-width: 100px; justify-content: center; }
     .status-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; }
     .status-badge.created { background: #e2e8f0; color: #334155; }
     .status-badge.confirmed { background: #dcfce7; color: #15803d; }
     .status-badge.rejected { background: #fee2e2; color: #b91c1c; }
     .status-badge.completed { background: #f3e8ff; color: #7e22ce; }
+    /* Popup "+more" en vista mes: coherente con modal y citas */
+    .fc-popover, .fc-more-popover {
+      border-radius: 8px !important;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+      border: 1px solid #e2e8f0 !important;
+      overflow: hidden !important;
+    }
+    .fc-popover .fc-popover-header,
+    .fc-more-popover .fc-popover-header {
+      padding: 1rem 1.25rem !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      font-weight: 600 !important;
+      font-size: 1rem !important;
+      color: var(--text-color, #4b5563) !important;
+      background: white !important;
+    }
+    .fc-popover .fc-popover-body,
+    .fc-more-popover .fc-popover-body {
+      padding: 0.75rem !important;
+      max-height: 320px !important;
+      overflow-y: auto !important;
+    }
+    .fc-popover .fc-event,
+    .fc-more-popover .fc-event,
+    .fc-popover .fc-daygrid-event,
+    .fc-more-popover .fc-daygrid-event {
+      border-radius: 6px !important;
+      border-left-width: 6px !important;
+      margin-bottom: 0.35rem !important;
+      min-width: 200px !important;
+    }
+    .fc-popover .fc-event-minimal .fc-event-time,
+    .fc-more-popover .fc-event-minimal .fc-event-time { display: block !important; font-size: 0.75rem !important; color: #64748b !important; margin-bottom: 0.15em !important; font-weight: 400 !important; }
+    .fc-popover .fc-event-minimal .fc-event-title,
+    .fc-more-popover .fc-event-minimal .fc-event-title { display: block !important; white-space: normal !important; -webkit-line-clamp: unset !important; overflow: visible !important; }
     /* Toast (PrimeNG severity info: message/info/color, background, border) */
     .toast { position: fixed; top: 1rem; right: 1rem; padding: 1rem 1.25rem; background: #e8e7fb; color: #6a5acd; border: solid #6a5acd; border-width: 0 0 0 6px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 0.9rem; z-index: 1100; animation: toastFade 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
     .toast .toast-icon { color: #6a5acd; font-size: 1.25rem; }
@@ -338,7 +459,7 @@
 <body tabindex="0">
   <div class="app" id="app">
     <header class="header">
-      <h1><i class="pi pi-calendar"></i> Appointment Management</h1>
+      <h1>Appointment Management</h1>
     </header>
 
     <div class="toolbar">
@@ -349,12 +470,14 @@
       </div>
       <div class="toolbar-right filters-bar">
         <span class="day-unavailable"><span class="day-unavailable-dot"></span>Day unavailable</span>
-        <div class="filter-buttons">
-          <button class="filter-btn active" data-filter="all">All</button>
+        <div class="filter-buttons-scroll">
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All</button>
           <button class="filter-btn" data-filter="created"><span class="filter-dot filter-dot-created"></span> Created</button>
           <button class="filter-btn" data-filter="confirmed"><span class="filter-dot filter-dot-confirmed"></span> Confirmed</button>
           <button class="filter-btn" data-filter="rejected"><span class="filter-dot filter-dot-rejected"></span> Rejected</button>
           <button class="filter-btn" data-filter="completed"><span class="filter-dot filter-dot-completed"></span> Completed</button>
+          </div>
         </div>
       </div>
     </div>
@@ -371,15 +494,28 @@
   <div class="modal-overlay hidden" id="modalOverlay">
     <div class="modal">
       <div class="modal-header">
-        <span><i class="pi pi-file-edit"></i> Appointment details</span>
-        <button class="btn btn-icon" id="btnCloseModal" aria-label="Close"><i class="pi pi-times"></i></button>
+        <span id="modalHeaderTitle">-</span>
+        <button class="modal-close-icon" id="btnCloseModal" aria-label="Close" type="button"><i class="pi pi-times"></i></button>
       </div>
       <div class="modal-body">
-        <div class="modal-row"><span>Number</span><span id="modalNumero">-</span></div>
+        <div class="modal-section">General Information</div>
         <div class="modal-row"><span>Customer</span><span id="modalCliente">-</span></div>
-        <div class="modal-row"><span>Start</span><span id="modalInicio">-</span></div>
-        <div class="modal-row"><span>End</span><span id="modalFin">-</span></div>
-        <div class="modal-row"><span>Status</span><span id="modalEstado">-</span></div>
+        <div class="modal-row"><span>Appointment Type</span><span id="modalTipo" class="status-display">-</span></div>
+        <div class="modal-row"><span>Appointment Status</span><span id="modalEstado" class="status-display">-</span></div>
+        <div class="modal-row"><span>Start Date</span><span id="modalInicio">-</span></div>
+        <div class="modal-row"><span>End Date</span><span id="modalFin">-</span></div>
+        <div class="modal-row"><span>Additional Comments</span><span id="modalComentarios">-</span></div>
+        <div class="modal-row"><span>Created</span><span id="modalCreated">-</span></div>
+        <div class="modal-row"><span>Updated</span><span id="modalUpdated">-</span></div>
+        <div class="modal-row"><span>Updated By</span><span id="modalUpdatedBy">-</span></div>
+        <div class="modal-section">Transport Details</div>
+        <div class="modal-row"><span>Carrier</span><span id="modalCarrier">-</span></div>
+        <div class="modal-row"><span>Vehicle Type</span><span id="modalVehicleType">-</span></div>
+        <div class="modal-row"><span>Plates</span><span id="modalPlates">-</span></div>
+        <div class="modal-row"><span>Driver</span><span id="modalDriver">-</span></div>
+        <div class="modal-row"><span>Phone Number</span><span id="modalPhone">-</span></div>
+        <div class="modal-row"><span>Email Address</span><span id="modalEmail">-</span></div>
+        <div class="modal-row"><span>Special Requirements</span><span id="modalSpecialReq">-</span></div>
       </div>
       <div class="modal-footer" id="modalFooter">
         <!-- Botones según estado se inyectan por JS -->
@@ -390,67 +526,47 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/en.global.min.js"></script>
   <script>
-    // Generar citas mock: día actual, 2 anteriores y 2 siguientes (5 días)
+    // Escenario 2: solo día actual, 6 AM–8 PM, una cita por hora, dos citas en 3–4 PM
     function generarCitas() {
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
-      const clientes = ['Transportes ABC', 'Logística XYZ', 'Carga Rápida SA', 'Envíos del Sur', 'Fletes Norte', 'Distribuidora Central', 'TransAndes', 'Almacenes del Este', 'Carga Express', 'Logística Global', 'Mensajería Plus', 'Almacén Central', 'Fletes Express', 'Distribución Sur'];
+      const clientes = ['Transport ABC', 'Logistics XYZ', 'Fast Cargo SA', 'Southern Shipping', 'North Freight', 'Central Distributor', 'TransAndes', 'Eastern Warehouses', 'Express Cargo', 'Global Logistics', 'Plus Messaging', 'Central Warehouse', 'Express Freight', 'Southern Distribution'];
       const tipos = ['Goods Entry', 'Goods Exit'];
       const estados = ['created', 'confirmed', 'rejected', 'completed'];
       const citas = [];
       let id = 1;
-      // Slots ampliados: más citas por día (de 6:00 a 18:00). Sin 10:00-11:45 en día actual (se añaden empalmadas)
-      const slotsBase = [
-        ['06:00', '07:00'], ['06:30', '07:30'], ['07:00', '08:00'], ['07:30', '08:30'], ['08:00', '09:00'],
-        ['08:30', '09:30'], ['09:00', '10:00'], ['09:30', '10:30'], ['11:00', '12:00'], ['11:30', '12:30'],
-        ['12:00', '13:00'], ['12:30', '13:30'], ['13:00', '14:00'], ['14:00', '15:00'], ['14:30', '15:30'],
-        ['15:00', '16:00'], ['15:30', '16:30'], ['16:00', '17:00'], ['16:30', '17:30'], ['17:00', '18:00']
-      ];
-      for (let d = -2; d <= 2; d++) {
-        const slots = (d === 0) ? slotsBase : slotsBase.concat([['10:00', '11:00'], ['10:15', '11:15'], ['10:30', '11:30'], ['10:45', '11:45']]);
-        const fecha = new Date(hoy);
-        fecha.setDate(fecha.getDate() + d);
-        const Y = fecha.getFullYear();
-        const M = String(fecha.getMonth() + 1).padStart(2, '0');
-        const D = String(fecha.getDate()).padStart(2, '0');
-        const base = Y + '-' + M + '-' + D;
-        for (let i = 0; i < slots.length; i++) {
-          const [ini, fin] = slots[i];
-          const cliente = clientes[(id - 1) % clientes.length];
-          const tipo = tipos[(id - 1) % tipos.length];
-          const estado = estados[(id - 1) % estados.length];
+      const horas = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+      const base = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+      for (const h of horas) {
+        const ini = String(h).padStart(2, '0') + ':00';
+        const fin = String(h + 1).padStart(2, '0') + ':00';
+        const count = (h === 15) ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+          const inicioISO = base + 'T' + ini + ':00';
+          const finISO = base + 'T' + fin + ':00';
           citas.push({
             id: String(id),
             numero: 'CIT-' + String(id).padStart(3, '0'),
-            cliente: cliente,
-            tipo: tipo,
-            inicio: base + 'T' + ini + ':00',
-            fin: base + 'T' + fin + ':00',
-            estado: estado
+            cliente: clientes[(id - 1) % clientes.length],
+            tipo: tipos[(id - 1) % tipos.length],
+            inicio: inicioISO,
+            fin: finISO,
+            estado: estados[Math.floor(Math.random() * estados.length)],
+            comentarios: id % 3 === 0 ? 'Urgent delivery required.' : (id % 5 === 0 ? 'Fragile cargo.' : ''),
+            created: new Date(Date.now() - 86400000 * (id % 5)).toISOString(),
+            updated: new Date(Date.now() - 86400000 * (id % 3)).toISOString(),
+            updatedBy: ['Admin', 'User A', 'User B', 'Operator'][id % 4],
+            carrier: ['DHL', 'FedEx', 'UPS', 'Local Freight'][id % 4],
+            vehicleType: ['Truck', 'Van', 'Semi'][id % 3],
+            plates: 'PLT-' + String(1000 + id),
+            driver: ['John Smith', 'Maria Garcia', 'Carlos Lopez'][id % 3],
+            phoneNumber: '+1 555-' + String(100 + id).padStart(3, '0'),
+            email: 'contact' + id + '@example.com',
+            specialRequirements: id % 4 === 0 ? 'Hazardous materials.' : ''
           });
           id++;
         }
       }
-      // Escenario: 4 citas empalmadas en el día actual (10:00-11:15)
-      const baseHoy = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-      const empalmadas = [
-        { ini: '10:00', fin: '11:00', cliente: 'Cliente A', tipo: 'Goods Entry', estado: 'created' },
-        { ini: '10:15', fin: '11:15', cliente: 'Cliente B', tipo: 'Goods Exit', estado: 'confirmed' },
-        { ini: '10:30', fin: '11:30', cliente: 'Cliente C', tipo: 'Goods Entry', estado: 'confirmed' },
-        { ini: '10:45', fin: '11:45', cliente: 'Cliente D', tipo: 'Goods Exit', estado: 'created' }
-      ];
-      empalmadas.forEach(function(e) {
-        citas.push({
-          id: 'emp-' + id,
-          numero: 'CIT-' + String(id).padStart(3, '0'),
-          cliente: e.cliente,
-          tipo: e.tipo,
-          inicio: baseHoy + 'T' + e.ini + ':00',
-          fin: baseHoy + 'T' + e.fin + ':00',
-          estado: e.estado
-        });
-        id++;
-      });
       return citas;
     }
     const citas = generarCitas();
@@ -460,7 +576,7 @@
     // Convertir citas a formato FullCalendar
     const events = citas.map(c => ({
       id: c.id,
-      title: `${c.tipo} - ${c.cliente}`,
+      title: (c.cliente || '') + ' - ' + (c.tipo || ''),
       start: c.inicio,
       end: c.fin,
       extendedProps: { ...c },
@@ -471,6 +587,7 @@
     const eventsData = events.slice();
 
     const calendarEl = document.getElementById('calendar');
+    var harnessByEventId = {};
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'timeGridDay',
       height: '100%',
@@ -510,9 +627,9 @@
       eventOrderStrict: true,
       slotDuration: '00:15:00',
       events: [],
-      dayMaxEvents: 5,
-      moreLinkClick: 'week',
-      moreLinkContent: function(arg) { return '+ ' + arg.num + ' appointments'; },
+      dayMaxEvents: 4,
+      moreLinkClick: 'popover',
+      moreLinkContent: function(arg) { return '+ ' + arg.num + ' more'; },
       dayCellClassNames: function(arg) {
         if (arg.date.getDay() === 0) return ['day-unavailable-cell'];
         return [];
@@ -529,28 +646,78 @@
         }
       },
       eventContent: function(arg) {
-        const estado = arg.event.extendedProps.estado || 'created';
-        const timeText = (arg.timeText || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        const title = (arg.event.title || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const evId = (arg.event.id || '').replace(/"/g,'&quot;');
+        const c = arg.event.extendedProps || {};
+        const cliente = (c.cliente || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const tipoRaw = c.tipo || '';
+        const tipo = tipoRaw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const tipoIcon = tipoRaw === 'Goods Entry' ? '<i class="pi pi-sign-in"></i> ' : (tipoRaw === 'Goods Exit' ? '<i class="pi pi-sign-out"></i> ' : '');
+        const tipoHtml = tipoIcon + tipo;
+        var timeRangeText = '-';
+        if (c.inicio && c.fin) {
+          var s = new Date(c.inicio).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+          var e = new Date(c.fin).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+          timeRangeText = s + ' - ' + e;
+        } else if (c.inicio) {
+          timeRangeText = new Date(c.inicio).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
         return {
-          html: '<div class="fc-event-minimal"><span class="fc-event-status-bar status-' + estado + '"></span><span class="fc-event-time">' + timeText + '</span><span class="fc-event-title">' + title + '</span></div>'
+          html: '<div class="fc-event-minimal" data-event-id="' + evId + '"><div class="fc-event-text"><span class="fc-event-customer">' + cliente + '</span><span class="fc-event-tipo">' + tipoHtml + '</span><span class="fc-event-time">' + timeRangeText + '</span></div></div>'
         };
       },
+      eventDidMount: function(arg) {
+        var harness = arg.el.closest('.fc-timegrid-event-harness') || arg.el.parentElement;
+        if (harness && arg.event.id) harnessByEventId[arg.event.id] = harness;
+      },
+      eventWillUnmount: function(arg) {
+        if (arg.event.id) delete harnessByEventId[arg.event.id];
+      },
       eventClick: (info) => {
-        const c = info.event.extendedProps;
-        document.getElementById('modalNumero').textContent = c.numero;
-        document.getElementById('modalCliente').textContent = c.cliente;
-        document.getElementById('modalInicio').textContent = new Date(c.inicio).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short' });
-        document.getElementById('modalFin').textContent = new Date(c.fin).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const estadoEl = document.getElementById('modalEstado');
-        estadoEl.innerHTML = '<span class="status-badge ' + c.estado + '">' + estadoLabels[c.estado] + '</span>';
+        const c = info.event.extendedProps || {};
+        const noInfo = 'No Information';
+        function fmt(d) { return d ? new Date(d).toLocaleString('en', { hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short', year: 'numeric' }) : noInfo; }
+        document.getElementById('modalHeaderTitle').textContent = (c.cliente || noInfo) + ' - ' + (c.tipo || noInfo);
+        document.getElementById('modalCliente').textContent = c.cliente || noInfo;
+        const tipo = c.tipo || '';
+        const tipoEl = document.getElementById('modalTipo');
+        if (tipo === 'Goods Entry') {
+          tipoEl.innerHTML = '<i class="pi pi-sign-in"></i> Goods Entry';
+        } else if (tipo === 'Goods Exit') {
+          tipoEl.innerHTML = '<i class="pi pi-sign-out"></i> Goods Exit';
+        } else {
+          tipoEl.textContent = tipo || noInfo;
+        }
+        const est = c.estado;
+        const statusEl = document.getElementById('modalEstado');
+        if (est && estadoLabels[est]) {
+          statusEl.innerHTML = '<span class="filter-dot filter-dot-' + est + '"></span>' + estadoLabels[est];
+        } else {
+          statusEl.textContent = noInfo;
+        }
+        document.getElementById('modalInicio').textContent = fmt(c.inicio);
+        document.getElementById('modalFin').textContent = fmt(c.fin);
+        document.getElementById('modalComentarios').textContent = c.comentarios || noInfo;
+        document.getElementById('modalCreated').textContent = fmt(c.created);
+        document.getElementById('modalUpdated').textContent = fmt(c.updated);
+        document.getElementById('modalUpdatedBy').textContent = c.updatedBy || noInfo;
+        document.getElementById('modalCarrier').textContent = c.carrier || noInfo;
+        document.getElementById('modalVehicleType').textContent = c.vehicleType || noInfo;
+        document.getElementById('modalPlates').textContent = c.plates || noInfo;
+        document.getElementById('modalDriver').textContent = c.driver || noInfo;
+        document.getElementById('modalPhone').textContent = c.phoneNumber || noInfo;
+        document.getElementById('modalEmail').textContent = c.email || noInfo;
+        document.getElementById('modalSpecialReq').textContent = c.specialRequirements || noInfo;
 
         const footer = document.getElementById('modalFooter');
         footer.innerHTML = '';
         if (c.estado === 'created') {
-          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check"></i> Confirm</button><button class="btn"><i class="pi pi-times"></i> Reject</button>';
+          footer.innerHTML = '<button class="btn btn-danger">Reject</button><button class="btn btn-success">Confirm</button>';
+          footer.classList.remove('modal-footer--no-actions');
         } else if (c.estado === 'confirmed') {
-          footer.innerHTML = '<button class="btn btn-primary"><i class="pi pi-check-circle"></i> Complete</button><button class="btn"><i class="pi pi-calendar-plus"></i> Reschedule</button>';
+          footer.innerHTML = '<button class="btn">Reschedule</button><button class="btn btn-primary">Complete</button>';
+          footer.classList.remove('modal-footer--no-actions');
+        } else {
+          footer.classList.add('modal-footer--no-actions');
         }
         footer.querySelectorAll('.btn').forEach(b => b.addEventListener('click', () => closeModal()));
 
@@ -565,6 +732,7 @@
       events.forEach(function(ev) { calendar.addEvent(ev); });
       calendar.gotoDate(new Date());
       document.getElementById('toast').classList.add('hidden');
+      updateFilterDisabledState();
     }
 
     window.addEventListener('keydown', function(e) {
@@ -629,6 +797,162 @@
     }
     applyDayUnavailableStyles();
 
+    /* Apilamiento vertical compacto: citas concurrentes o adyacentes se apilan verticalmente cuando sea posible */
+    function applyVerticalStacking() {
+      ignoreStackingObserver = true;
+      const view = calendar.view;
+      if (!view || (view.type !== 'timeGridDay' && view.type !== 'timeGridWeek')) {
+        ignoreStackingObserver = false;
+        return;
+      }
+      var cols = document.querySelectorAll('#calendar .fc-timegrid-body .fc-timegrid-col');
+      if (!cols.length) cols = document.querySelectorAll('#calendar .fc-timegrid-col');
+      if (!cols.length) {
+        setTimeout(function() { ignoreStackingObserver = false; }, 0);
+        return;
+      }
+      var slotHeight = 24;
+      var firstCol = cols[0];
+      if (firstCol) {
+        var colFrame = firstCol.querySelector('.fc-timegrid-col-frame');
+        var slotMinor = document.querySelector('#calendar .fc-timegrid-slot-minor');
+        if (slotMinor && slotMinor.offsetHeight > 0) {
+          slotHeight = slotMinor.offsetHeight;
+        } else if (colFrame && colFrame.offsetHeight > 0) {
+          var slots = firstCol.querySelectorAll('.fc-timegrid-slot');
+          var minors = firstCol.querySelectorAll('.fc-timegrid-slot-minor');
+          var n = minors.length > 0 ? minors.length : slots.length;
+          if (n > 0) slotHeight = colFrame.offsetHeight / (n >= 48 ? n : n * 4);
+        }
+      }
+      const GAP = 2;
+      function durationPx(start, end) { return Math.round(((end - start) / 60000 / 15) * slotHeight); }
+      function overlaps(a, b) { return a.end > b.start && b.end > a.start; }
+      cols.forEach(function(col, colIndex) {
+        var mainEventsEl = col.querySelector('.fc-timegrid-col-frame .fc-timegrid-col-events');
+        var harnesses = mainEventsEl ? Array.from(mainEventsEl.querySelectorAll('.fc-timegrid-event-harness')) : [];
+        if (!harnesses.length) return;
+        var rangeStart = view.activeStart;
+        var colDate = new Date(rangeStart);
+        colDate.setDate(colDate.getDate() + colIndex);
+        colDate.setHours(0, 0, 0, 0);
+        var colDateEnd = new Date(colDate);
+        colDateEnd.setDate(colDateEnd.getDate() + 1);
+        var dayEvents = calendar.getEvents().filter(function(ev) {
+          var s = ev.start;
+          return s >= colDate && s < colDateEnd;
+        }).sort(function(a, b) { return a.start - b.start; });
+        if (dayEvents.length === 0) return;
+        var columns = [];
+        dayEvents.forEach(function(ev) {
+          var placed = false;
+          for (var c = 0; c < columns.length; c++) {
+            var canPlace = true;
+            for (var i = 0; i < columns[c].length; i++) {
+              if (overlaps(columns[c][i], ev)) { canPlace = false; break; }
+            }
+            if (canPlace) { columns[c].push(ev); placed = true; break; }
+          }
+          if (!placed) columns.push([ev]);
+        });
+        var totalCols = columns.length;
+        var eventToCol = {};
+        columns.forEach(function(colEvents, c) {
+          colEvents.forEach(function(ev) { eventToCol[ev.id] = c; });
+        });
+        var colTops = {};
+        for (var c = 0; c < totalCols; c++) colTops[c] = 0;
+        dayEvents.forEach(function(ev) {
+          var c = eventToCol[ev.id];
+          var topPx = colTops[c];
+          var heightPx = Math.max(20, durationPx(ev.start, ev.end));
+          colTops[c] = topPx + heightPx + GAP;
+          var evCol = c;
+          var colsOverlappingWithEv = [];
+          for (var k = 0; k < totalCols; k++) {
+            var hasOverlap = columns[k].some(function(other) { return overlaps(other, ev); });
+            if (hasOverlap) colsOverlappingWithEv.push(k);
+          }
+          colsOverlappingWithEv.sort(function(a, b) { return a - b; });
+          var n = colsOverlappingWithEv.length;
+          var idxInConcurrent = colsOverlappingWithEv.indexOf(evCol);
+          if (idxInConcurrent < 0) idxInConcurrent = 0;
+          var H_GAP_PCT = 0.5;
+          var colWidth = n <= 1 ? 100 : (100 - (n - 1) * H_GAP_PCT) / n;
+          var leftPct = n <= 1 ? 0 : idxInConcurrent * (colWidth + H_GAP_PCT);
+          var widthPct = colWidth;
+          var harness = harnesses.find(function(h) {
+            var inner = h.querySelector('[data-event-id]');
+            return inner && inner.getAttribute('data-event-id') === String(ev.id);
+          });
+          if (!harness) harness = harnessByEventId[ev.id] || harnesses[dayEvents.indexOf(ev)];
+          if (!harness && ev.id) console.warn('[applyVerticalStacking] Harness no encontrado para evento id:', ev.id);
+          if (harness) {
+            harness.style.setProperty('position', 'absolute', 'important');
+            harness.style.setProperty('inset', 'unset', 'important');
+            harness.style.setProperty('right', 'auto', 'important');
+            harness.style.setProperty('left', leftPct + '%', 'important');
+            harness.style.setProperty('top', topPx + 'px', 'important');
+            harness.style.setProperty('width', widthPct + '%', 'important');
+            harness.style.setProperty('height', heightPx + 'px', 'important');
+            if (n <= 1) harness.classList.add('fc-cita-full-width');
+            else harness.classList.remove('fc-cita-full-width');
+          }
+        });
+      });
+      setTimeout(function() { ignoreStackingObserver = false; }, 0);
+    }
+    var stackingDebounceTimer = null;
+    var stackingPassTimers = [];
+    var ignoreStackingObserver = false;
+    function scheduleVerticalStacking() {
+      if (stackingDebounceTimer) clearTimeout(stackingDebounceTimer);
+      stackingPassTimers.forEach(function(t) { clearTimeout(t); });
+      stackingPassTimers = [];
+      stackingDebounceTimer = setTimeout(function() {
+        stackingDebounceTimer = null;
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            applyVerticalStacking();
+            var view = calendar.view;
+            if (view && (view.type === 'timeGridDay' || view.type === 'timeGridWeek')) {
+              [100, 300, 600].forEach(function(delay) {
+                stackingPassTimers.push(setTimeout(function() {
+                  applyVerticalStacking();
+                }, delay));
+              });
+            }
+          });
+        });
+      }, 200);
+    }
+    function setupStackingMutationObserver() {
+      var cal = document.getElementById('calendar');
+      if (!cal) return;
+      if (cal._stackingObserver) return;
+      var observer = new MutationObserver(function(mutations) {
+          if (ignoreStackingObserver) return;
+          var needsReapply = false;
+          for (var i = 0; i < mutations.length && !needsReapply; i++) {
+            var m = mutations[i];
+            if (m.type === 'attributes' && m.attributeName === 'style' && m.target.classList && m.target.classList.contains('fc-timegrid-event-harness')) {
+              var ins = m.target.style.getPropertyValue('inset');
+              var right = m.target.style.getPropertyValue('right');
+              if ((ins && ins !== 'unset') || (right && right !== 'auto' && right !== '')) needsReapply = true;
+            }
+          }
+          if (needsReapply) scheduleVerticalStacking();
+        });
+      observer.observe(cal, { subtree: true, attributes: true, attributeFilter: ['style'] });
+      cal._stackingObserver = observer;
+    }
+    calendar.on('datesSet', function() {
+      scheduleVerticalStacking();
+      setupStackingMutationObserver();
+    });
+    calendar.on('eventsSet', scheduleVerticalStacking);
+    window.addEventListener('resize', function() { scheduleVerticalStacking(); });
+
     // Inyectar botones Day/Week/Month con iconos y estilo button-set (FC no los renderiza; right: '')
     (function injectViewButtons() {
       const rightChunk = document.querySelector('#calendar .fc-toolbar .fc-toolbar-chunk:last-child');
@@ -639,6 +963,7 @@
           rightChunk.querySelectorAll('.view-buttons .btn').forEach(function(b) { b.classList.remove('active'); });
           btn.classList.add('active');
           calendar.changeView(btn.dataset.view);
+          setTimeout(scheduleVerticalStacking, 250);
         });
       });
       calendar.on('datesSet', function() {
@@ -662,10 +987,14 @@
       return counts;
     }
     function updateFilterDisabledState() {
+      if (!mostrarCitas) {
+        document.querySelectorAll('.filter-btn').forEach(btn => { btn.disabled = true; });
+        return;
+      }
       const counts = getCountByStatus();
       document.querySelectorAll('.filter-btn').forEach(btn => {
         const filter = btn.dataset.filter;
-        if (filter === 'all') return;
+        if (filter === 'all') { btn.disabled = false; return; }
         const count = counts[filter] || 0;
         btn.disabled = count === 0;
         if (btn.disabled && btn.classList.contains('active')) {
@@ -680,6 +1009,7 @@
     function applyFilter() {
       calendar.removeAllEvents();
       getFilteredEvents().forEach(ev => calendar.addEvent(ev));
+      setTimeout(scheduleVerticalStacking, 200);
     }
     updateFilterDisabledState();
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -737,10 +1067,10 @@
         .fc .fc-col-header, .fc .fc-timegrid-slot-label {
           background: #ffffff !important;
         }
-        /* Eventos: border-radius 4px estilo técnico */
-        .fc .fc-event, .fc .fc-event-main, .fc .fc-daygrid-event, .fc .fc-timegrid-event, .fc-daygrid-event-harness { border-radius: 4px !important; }
-        /* Vista month: padding compacto */
-        .fc .fc-daygrid-event { padding: 1px 4px !important; }
+        /* Eventos: border-radius 6px estilo card */
+        .fc .fc-event, .fc .fc-event-main, .fc .fc-daygrid-event, .fc .fc-timegrid-event, .fc-daygrid-event-harness { border-radius: 6px !important; }
+        /* Vista month: padding compacto (alineado con diseño minimalista) */
+        .fc .fc-daygrid-event { padding: 4px 8px !important; }
         /* Líneas divisorias punteadas visibles */
         .fc .fc-timegrid-slot { border-top: 1px dotted #cbd5e1 !important; }
         .fc .fc-timegrid-slot-minor { border-top: 1px dotted #e2e8f0 !important; }
