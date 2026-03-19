@@ -286,6 +286,10 @@
     .fc-daygrid-day.fc-day-sun {
       background: #f9fafb !important;
     }
+    /* Header de día no disponible (solo Day/Week, no Month): mismo color que las celdas */
+    .fc-timegrid .fc-col-header-cell.fc-day-sun {
+      background: #f9fafb !important;
+    }
     /* Citas: border-radius 6px estilo card */
     .fc .fc-event,
     .fc .fc-event-main,
@@ -452,6 +456,8 @@
     /* Toast (PrimeNG severity info: message/info/color, background, border) */
     .toast { position: fixed; top: 1rem; right: 1rem; padding: 1rem 1.25rem; background: #e8e7fb; color: #6a5acd; border: solid #6a5acd; border-width: 0 0 0 6px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 0.9rem; z-index: 1100; animation: toastFade 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
     .toast .toast-icon { color: #6a5acd; font-size: 1.25rem; }
+    .toast.toast-success { background: #dcfce7; color: #15803d; border-color: #15803d; }
+    .toast.toast-success .toast-icon { color: #15803d; }
     .toast.hidden { display: none; }
     @keyframes toastFade { from { opacity: 0; transform: translateX(1rem); } to { opacity: 1; transform: translateX(0); } }
   </style>
@@ -619,8 +625,8 @@
       slotEventOverlap: false,
       /* Espacio compartido: citas lado a lado en Día/Semana. dayGridMonth no soporta slotEventOverlap. */
       views: {
-        timeGridDay: { slotEventOverlap: false },
-        timeGridWeek: { slotEventOverlap: false }
+        timeGridDay: { slotEventOverlap: false, allDaySlot: false },
+        timeGridWeek: { slotEventOverlap: false, allDaySlot: false }
       },
       eventMaxStack: 99,
       eventOrder: 'start',
@@ -1026,6 +1032,8 @@
     (function() {
       const toast = document.getElementById('toast');
       if (!mostrarCitas) {
+        toast.innerHTML = '<i class="pi pi-info-circle toast-icon"></i>No appointments are registered';
+        toast.classList.remove('toast-success');
         toast.classList.remove('hidden');
         setTimeout(function() { toast.classList.add('hidden'); }, 5000);
       } else {
@@ -1063,6 +1071,9 @@
         .day-unavailable-cell, .fc .fc-day-sun:not(.fc-col-header-cell), .fc-timegrid-col.fc-day-sun, td.fc-day-sun, .fc-daygrid-day.fc-day-sun {
           background: #f9fafb !important;
         }
+        .fc-timegrid .fc-col-header-cell.fc-day-sun {
+          background: #f9fafb !important;
+        }
         /* Encabezados y horarios: fill blanco (días normales) */
         .fc .fc-col-header, .fc .fc-timegrid-slot-label {
           background: #ffffff !important;
@@ -1088,9 +1099,7 @@
     });
     document.getElementById('btnCloseModal').addEventListener('click', closeModal);
 
-    document.getElementById('btnNuevaCita').addEventListener('click', () => {
-      alert('Crear nueva cita (HU.02) - Placeholder para el prototipo');
-    });
+    document.getElementById('btnNuevaCita').addEventListener('click', () => {});
   </script>
 </body>
 </html>
